@@ -1,27 +1,4 @@
-#include <Arduino.h>
-#include <ESP8266WiFi.h>
-#include <ESPAsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-#include <EEPROM.h>
-#define prueba 1
-// Set these to your desired credentials....
-const char *ssid = "Lavar";
-const char *password = "Eficento013";
 
-const char* PARAM_INPUT_1 = "state";
-const char* PARAM_INPUT_2 = "value";
-const char* PARAM_INPUT_3 = "value1";
-
-const int output = 0;
-const int output1 = 2;
-
-// Create AsyncWebServer object on port 80
-AsyncWebServer server(80);
-// Mandar cambios del servidor al cliente html
-AsyncEventSource events("/events");
-//<!-- ... --> para comentar en HTML
-
-const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -84,13 +61,11 @@ const char index_html[] PROGMEM = R"rawliteral(
   <p>Control temporizado 
   de marcha y 
   contramarcha</p>
-  <p>Tiempo de Marcha/contramarcha <span id="timerValue">%TIMERVALUE%</span> s</p>
+  <p><span id="timerValue">%TIMERVALUE%</span> s</p>
   <p><input type="range" onchange="updateSliderTimer(this)" id="timerSlider" min="1" max="180" value="%TIMERVALUE%" step="1" class="slider2"></p>
-  <p>Tiempo de Pausa <span id="timerValue1">%TIMERVALUE1%</span> s</p>
+  <p><span id="timerValue1">%TIMERVALUE1%</span> s</p>
   <p><input type="range" onchange="updateSliderTimer1(this)" id="timerSlider1" min="1" max="60" value="%TIMERVALUE1%" step="1" class="slider2"></p>
   %BUTTONPLACEHOLDER%
-   <p><span id="mtiempo"></span>s Estado <span id="maqestado">%MESTADO%</span> </p>
-
   <p style="text-align: center;" >
     <svg version="1.1"
 	  id="svg-spinner"
@@ -104,11 +79,10 @@ const char index_html[] PROGMEM = R"rawliteral(
 	>
 	  <path
 	    id="spinner"
-	    fill="%STATECOLOR%"
+	    fill="#9c9c9c"
 	    d="M40,72C22.4,72,8,57.6,8,40C8,22.4, 22.4,8,40,8c17.6,0,32,14.4,32,32c0,1.1-0.9,2-2,2 s-2-0.9-2-2c0-15.4-12.6-28-28-28S12,24.6,12,40s12.6, 28,28,28c1.1,0,2,0.9,2,2S41.1,72,40,72z"
 	  >
 	  <animateTransform
-      id="mover"
 	    attributeType="xml"
 	    attributeName="transform"
 	    type="rotate"
@@ -120,33 +94,17 @@ const char index_html[] PROGMEM = R"rawliteral(
 	  >
 	  </path>
 </svg>
-</p>
+<p><span id="AngleValue">%ANGULO%</span> s</p>
 
+  </p>
 <script>
-var nIntervId;
-
 function toggleCheckbox(element) {
-  document.getElementById("Estado").disable=true;
+  var sliderValue = document.getElementById("timerSlider").value;
   var xhr = new XMLHttpRequest();
-  if(element.checked){ 
-    xhr.open("GET", "/update?state=1", true); 
-    xhr.onload = function (e) {
-    if (xhr.readyState === 4) {
-      if (xhr.status === 200) {
-       console.log(xhr.responseText);
-       } else {
-       console.error(xhr.statusText);
-     }
-   }
-  };
-  xhr.onerror = function (e) {
-   console.error(xhr.statusText);
-  };
-  xhr.send();
-   //document.getElementById('togglee').style.visibility = 'hidden';
-   //document.getElementById("spinner").style.fill = '#00CED5';
-    //var intervalID = window.setInterval(Actualizadatos, 1000);
-
+  if(element.checked){ xhr.open("GET", "/update?state=1", true); xhr.send();
+   document.getElementById('togglee').style.visibility = 'hidden';
+   document.getElementById('spinner').fill = '#00CED5';
+    
   /*
     var count = sliderValue, timer = setInterval(function()  {
       count--; document.getElementById("timerValue").innerHTML = count;
@@ -164,8 +122,8 @@ function toggleCheckbox(element) {
   }else{
     xhr.open("GET", "/update?state=0", true);
     document.getElementById(element.id).checked = false; xhr.send();
-   // document.getElementById("spinner").style.fill = '#9c9c9c';
-  } 
+    document.getElementById('spinner').fill = '#9c9c9c';
+  }
   
 }
 function updateSliderTimer(element) {
@@ -182,437 +140,6 @@ function updateSliderTimer1(element) {
   xhr.open("GET", "/slider?value1="+sliderValue1, true);
   xhr.send();
 }
-function Iniciazar(){
-  if(document.getElementById("Estado").checked == false){
-     document.getElementById("spinner").style.fill = '#9c9c9c';
-     document.getElementById("spinner").animateTransform.to = "-270 40 40";
-     //document.getElementById('spinner').style.visibility = 'hidden';
-  }else{
-    document.getElementById("spinner").style.fill = '#00CED5';
-    
-  }
-}
-window.onload = Iniciazar();
-//function Actualizadatos(){
-
-//}
-const angulos = [ "-90", "-90", "280","-90","-450"];
-const Vestados = [ "Proceso Detenido ", "Pausa pre M", "Marcha","Pausa pre C","Contramarcha"];
-
-if (!!window.EventSource) {
- var source = new EventSource('/events');
- source.addEventListener('open', function(e) {
-   console.log("Events Connected");
- }, false);
- source.addEventListener('error', function(e) {
-   if (e.target.readyState != EventSource.OPEN) {
-     console.log("Events Disconnected");
-    }
-  }, false);
-  source.addEventListener('message', function(e) {
-  console.log("message", e.data);
-  }, false);
-  source.addEventListener('mestado', function(e) {
-   console.log("mestado", e.data);
-   document.getElementById("maqestado").innerHTML = Vestados[e.data-1]
-   if (e.data==1){
-        document.getElementById("spinner").style.fill = '#9c9c9c';
-    }else{
-        document.getElementById("spinner").style.fill = '#00CED5';
-    }
-  
-   document.getElementById("mover").setAttribute("to",angulos[e.data-1]+" 40 40");
-  }, false);
-
-  source.addEventListener('muestratiempo', function(e) {
-   console.log("mtiempo", e.data);
-   document.getElementById("mtiempo").innerHTML = e.data;
-    
-  }, false);
-  evtSource.onerror = function(e) {
-  alert("EventSource failed.");
-};
-}
 </script>
 </body>
 </html>
-)rawliteral";
-
-/* Estructura que carga y guarda en eeprom */
-
-#define TIMER_INTERRUPT_DEBUG         0
-#define _TIMERINTERRUPT_LOGLEVEL_     0
-#include <ESP8266TimerInterrupt.h>
-#define TIMER_INTERVAL_MS        1000   //1000
-volatile uint32_t TimerCount = 0;
-String estado = "1"; //0 apago 1 encendido
-String timerSliderValue = "10";
-String timerSliderValue1 = "1";
-int tempo;
-int tempo1;
-
-struct config_t {
-    uint8_t estadog;
-    uint8_t Tmarchag;
-    uint8_t Tpausag;
-    uint8_t TTotal;
-} config;
-
-void eepromsave() {
-    EEPROM.begin(sizeof(config));
-    EEPROM.put(0, config); //Guardo la config
-    EEPROM.end();
-}
-//Cargo de la eeprom el struct config
-void eepromload() {
-    EEPROM.begin(sizeof(config));
-    EEPROM.get(0, config); //Cargo config
-    EEPROM.end();
-}
-//Inicializo valores para eeprom
-void eeprominit() {
-       config.estadog= 0;
-       config.Tmarchag=10;
-       config.Tpausag=10;
-       config.TTotal=1;
-    //Guardo valores por defecto en la eeprom 
-    eepromsave(); 
-}
-
-
-ESP8266Timer ITimer;
-
-void printResult(uint32_t currTime)
-{
- Serial.print(F("Time = ")); Serial.print(currTime); 
- Serial.print(F(", TimerCount = ")); Serial.println(TimerCount);
-}
-void TimerHandler()
-{
-  static bool toggle = false;
-
-  // Flag for checking to be sure ISR is working as Serial.print is not OK here in ISR
-  TimerCount++;
-
-  //timer interrupt toggles pin LED_BUILTIN
-  //digitalWrite(LED_BUILTIN, toggle);
-  //digitalWrite(output, toggle);
-  
-  toggle = !toggle;
-  //estado=toggle;
-  //Serial.print(F("\nEstado=")); Serial.print(estado); 
-}
-
-String outputState(){
-  
-  if(estado=="0" || estado=="9"){
-    return "";
-  }
-  else {
-    return "checked";
-  }
-    return "";
-}
-
-// Replaces placeholder with button section in your web page
-String processor(const String& var){
-  //Serial.println(var);
-  if(var == "BUTTONPLACEHOLDER"){
-    String buttons = "";
-    
-    String outputStateValue = outputState();
-    
-    buttons+= "<p><label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"Estado\" " + outputStateValue + "><span class=\"slider\"></span></label></p>";
-    return buttons;
-  }
-  else if(var == "TIMERVALUE"){
-    return timerSliderValue;
-  }
-  else if(var == "TIMERVALUE1"){
-    return timerSliderValue1;
-  }
-  else if(var == "STATECOLOR"){
-     if(estado=="0" || estado=="9")
-     return "#9c9c9c";
-    else 
-      return "#00CED5";
-  }
-  else if(var == "ANGULO"){
-    if (estado == "3") 
-    return "280";
-    else if(estado == "5") {
-      return "-450";
-    } else return "-90";
-    
-  }
-  else if(var == "MESTADO"){
-    return estado;
-  }
-  return String();
-}
-
-void setup() {
-  //Dejar solo la primera vez para que se graven los datos y no sea 0000000
-  //eepromsave();
- 
-  digitalWrite(output, HIGH);
-  pinMode(output, OUTPUT);
-  digitalWrite(output1, HIGH);
-  pinMode(output1, OUTPUT);
-  
-  delay(1000); //Agregado para que despues del reset pase un tiempo y el serial no sufra jiter
-
-  // Serial port for debugging purposes
-  Serial.begin(115200);
-  while (!Serial);
-  
-  // Connect to Wi-Fi
-  Serial.println();
-  Serial.print("Configurando Punto de Acceso...");
-// You can remove the password parameter if you want the AP to be open. 
-  Serial.print(ssid);
-  Serial.print(password);
-  delay(2000);
-  WiFi.softAP(ssid, password);
-
-  IPAddress myIP = WiFi.softAPIP();
-    Serial.print("AP Dirección IP: ");
-  Serial.println(myIP);
-  //Serial.print("\nMOde del puerto 2=%i",
-  // Print ESP Local IP Address
-  //Serial.println(WiFi.localIP());
- 
-  //para entender timer
-  Serial.print(F("\nStarting Change_Interval on "));
-  Serial.println(ARDUINO_BOARD);
-  Serial.println(ESP8266_TIMER_INTERRUPT_VERSION);
-  Serial.print(F("CPU Frequency = ")); Serial.print(F_CPU / 1000000); 
-  Serial.println(F(" MHz"));
-  
-   // Interval in microsecs
-  if (ITimer.attachInterruptInterval(TIMER_INTERVAL_MS * 1000, TimerHandler))
-  {
-    Serial.print(F("Starting  ITimer OK, millis() = ")); Serial.println(millis());
-  }
-  else
-    Serial.println(F("Can't set ITimer. Select another freq. or timer"));
-  
-
-  #define CHECK_INTERVAL_MS     10000L
-  #define CHANGE_INTERVAL_MS    20000L
-
-  
-  // Route for root / web page
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/html", index_html, processor);
-  });
-
-  // Send a GET request to <ESP_IP>/update?state=<inputMessage>
-  server.on("/update", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    String inputMessage;
-    // GET input1 value on <ESP_IP>/update?state=<inputMessage>
-    if (request->hasParam(PARAM_INPUT_1)) {
-      inputMessage = request->getParam(PARAM_INPUT_1)->value();
-     // digitalWrite(output,inputMessage.toInt());
-      Serial.printf("\n%s=",PARAM_INPUT_1); Serial.print(inputMessage); 
-      estado = inputMessage;
-      if (estado=="0"){
-        config.estadog=0;
-        digitalWrite(output,HIGH);
-        digitalWrite(output1,HIGH);
-        eepromsave();
-      }
-    }
-    else {
-      inputMessage = "No message sent";
-    }
-    //Serial.println(inputMessage);
-    
-    request->send(200, "text/plain", "OK");
-  });
-  
-  // Send a GET request to <ESP_IP>/slider?value=<inputMessage>
-  server.on("/slider", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    String inputMessage;
-    // GET input1 value on <ESP_IP>/slider?value=<inputMessage>
-    if (request->hasParam(PARAM_INPUT_2)) {
-      inputMessage = request->getParam(PARAM_INPUT_2)->value();
-      timerSliderValue = inputMessage;
-    }else if (request->hasParam(PARAM_INPUT_3)){
-        inputMessage = request->getParam(PARAM_INPUT_3)->value();
-      timerSliderValue1 = inputMessage;
-    }else  {
-      inputMessage = "No message sent";
-    }
-    //Serial.println(inputMessage);
-    int args = request->args();
-    for(int i=0;i<args;i++){
-      Serial.printf("%s=%s\n", request->argName(i).c_str(), request->arg(i).c_str());
-    }
-    request->send(200, "text/plain", "OK");
-  });
-  //para manejar eventos y mandar cosas del server al cliente
-  events.onConnect([](AsyncEventSourceClient *client){
-    if(client->lastId()){
-      Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
-    }
-    // send event with message "hello!", id current millis and set reconnect delay to 1 second
-    client->send("hello!",NULL,millis(),1000);
-  });
-  server.addHandler(&events);
-  // Start server
-  server.begin();
-
-  eepromload();
-
-   estado = String(config.estadog);
-   timerSliderValue = String( config.Tmarchag);
-   timerSliderValue1 = String( config.Tpausag);
-
-  //para luego agregar el tiempo total
-  //uint8_t TTotal;
-
-}
-
-void loop() {
-  
-  // put your main code here, to run repeatedly:
-
-  static uint32_t lastTime = 0;
-  static uint32_t lastTimedisplay = 0;
-  static uint32_t lastChangeTime = 0;
-  static uint32_t currTime;
-  static uint32_t multFactor = 0;
-  static uint16_t tiempo_de_pausa=1; //en segundos
-  static uint16_t tiempo_de_marcha=10;
-  volatile static uint8_t marcha=0;
-  volatile static uint8_t contramarcha=0;
-  static uint32_t ftime = 0;
-  String sftime="0";
-  currTime = millis();
-   if (estado == "0") //Empieza con la pausa
-  { 
-    TimerCount=0;
-    marcha=0;
-    contramarcha=0;
-    lastTime = TimerCount;
-    events.send("1","mestado",millis());
-    estado="9";
-  }
-
-  if (estado == "1") //Empieza con la pausa
-  { 
-    estado="2";
-    TimerCount=0;
-    marcha=0;
-    contramarcha=0;
-    lastTime = TimerCount;
-    Serial.print(F("\nTiempo anterior de Pausa [Seg]=")); Serial.println(tiempo_de_pausa);
-    if (tiempo_de_pausa == timerSliderValue1.toInt()){
-      Serial.print(F("\nEs igual a"));
-    }else
-     Serial.print(F("\nNo es lo mismo a"));
-
-    tiempo_de_pausa= timerSliderValue1.toInt();
-    Serial.print(F("\nTiempo de Pausa [Seg]=")); Serial.println(tiempo_de_pausa);
-    
-    Serial.print(F("\nTiempo anterior de Marcha [Seg]=")); Serial.println(tiempo_de_marcha);
-    if (tiempo_de_marcha == timerSliderValue.toInt()){
-      Serial.print(F("\nEs igual a"));
-    }else{
-      Serial.print(F("\nNo es lo mismo a"));
-    }
-    tiempo_de_marcha= timerSliderValue.toInt();
-    Serial.print(F("\nTiempo de Marcha [Seg]=")); Serial.println(tiempo_de_marcha);
-      // hay que grabar de todos modos porque hace falta el estado
-      config.Tmarchag=tiempo_de_marcha;
-      config.Tpausag=tiempo_de_pausa;
-      config.estadog=1;
-      eepromsave();
-      events.send(estado.c_str(),"mestado",millis());
-  }
-
-  if (estado == "2") //Pausa Esperando para marcha
-  { 
-      
-    if (TimerCount - lastTime > tiempo_de_pausa)
-    { 
-      lastTime = TimerCount;
-      estado="3";
-      digitalWrite(output,LOW);
-      marcha=1;
-      events.send(estado.c_str(),"mestado",millis());
-    }
-  }    
-  if (estado == "3") //Marcha Esperando para pausa
-  { 
-    if (TimerCount - lastTime > tiempo_de_marcha)
-    { 
-      lastTime = TimerCount;
-      estado="4";
-      marcha=0;
-      digitalWrite(output,HIGH);
-      digitalWrite(output1,HIGH);
-      contramarcha=0;
-      events.send(estado.c_str(),"mestado",millis());
-    }
-  }    
-  if (estado == "4") //Parado Esperando para contramarcha
-  { 
-    if (TimerCount - lastTime > tiempo_de_pausa)
-    { 
-      lastTime = TimerCount;
-      estado="5";
-      contramarcha=1;
-      digitalWrite(output1,LOW);
-      events.send(estado.c_str(),"mestado",millis());
-    }
-  }    
-  if (estado == "5") //Contramarcha Esperando para pausa
-  { 
-    if (TimerCount - lastTime > tiempo_de_marcha)
-    { 
-      lastTime = TimerCount;
-      estado="2";
-      contramarcha=0;
-      digitalWrite(output1,HIGH);
-      events.send(estado.c_str(),"mestado",millis());
-    }
-  }    
-  if (TimerCount - lastTimedisplay > 1)
-  {
-   lastTimedisplay=TimerCount;
-   if ((estado=="5")||(estado=="3")){
-     ftime= tiempo_de_marcha-(TimerCount-lastTime);
-   } else if ((estado=="2")||(estado=="4")){
-     ftime= tiempo_de_pausa-(TimerCount-lastTime);
-   } else {ftime=0;}
-  sftime=String(ftime);
-      events.send(sftime.c_str(),"muestratiempo",millis());
-      
-    Serial.print(F("\n")); Serial.print(TimerCount-lastTime); 
-     Serial.print(F("/")); Serial.print(lastTime); 
-     Serial.print(F("/")); Serial.print(TimerCount); 
-    Serial.print(F(" Est ")); Serial.print(estado); 
-      
-    if (contramarcha==1) Serial.print(F(" <- "));
-    else Serial.print(F("    "));
-    if (marcha==1) Serial.print(F("->"));
-    else Serial.print(F("  "));
-    
-  }
-  
-}
-//Ideas
-/*
-
-chequear errores de comunicacion
-chequear sui se envio antes de enviar
-corregir tiempo para que sea de a 1
-
-agragar logueo
-
-agregar que la pagina sepa si esta conectada al dispositivo
-y en todo caso hacer retries si se corta
-
-*/
