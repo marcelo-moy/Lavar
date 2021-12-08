@@ -587,6 +587,7 @@ void loop() {
    } else if ((estado=="2")||(estado=="4")){
      ftime= tiempo_de_pausa-(TimerCount-lastTime);
    } else {ftime=0;}
+   if (ftime>tiempo_de_marcha) ftime=tiempo_de_marcha;
   sftime=String(ftime);
       events.send(sftime.c_str(),"muestratiempo",millis());
       
