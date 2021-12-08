@@ -5,8 +5,8 @@
 #include <EEPROM.h>
 #define prueba 1
 // Set these to your desired credentials....
-const char *ssid = "Lavar";
-const char *password = "Eficento013";
+const char *ssid = "Control_Lavadora";
+const char *password = "Lavar001";
 
 const char* PARAM_INPUT_1 = "state";
 const char* PARAM_INPUT_2 = "value";
