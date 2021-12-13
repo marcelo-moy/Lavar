@@ -2,6 +2,10 @@
 	"folders": [
 		{
 			"path": ".."
+		},
+		{
+			"name": "24segundos",
+			"path": "..\\..\\24segundos\\24segundos"
 		}
 	],
 	"settings": {}

@@ -121,7 +121,9 @@ const char index_html[] PROGMEM = R"rawliteral(
 	  </path>
 </svg>
 </p>
-
+  <p style="text-align: center;" >
+  www.eficento.com +54 358 402 5895
+  </p>
 <script>
 var nIntervId;
 
